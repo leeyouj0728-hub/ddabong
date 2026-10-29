@@ -44,7 +44,7 @@ a{color:var(--party)}
 .panel{background:var(--panel);overflow-y:auto;border-right:1px solid var(--line);
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:16px;padding-block:0 120px;display:flex;flex-direction:column;gap:14px}
 .mapside{position:relative;min-width:0;padding-right:env(safe-area-inset-right,0px)}
-#map{position:absolute;inset:0;background:var(--surface-2)}
+#map{position:absolute!important;inset:0;width:100%!important;height:100%!important;background:var(--surface-2)}
 #map svg{width:100%;height:100%;display:block}
 .mapnote{position:absolute;left:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--surface);border-radius:12px;padding:8px 12px;font-size:12px;color:var(--muted);box-shadow:var(--shadow);max-width:calc(100% - 32px)}
 
@@ -511,6 +511,8 @@ function renderNaver(items){
     else { const t=mapTarget(); NMAP.setCenter(new naver.maps.LatLng(t.c[0],t.c[1])); NMAP.setZoom(t.z); }
   }
 }
+function fitMapSize(){ if(!NMAP) return; const el=$("#map"); if(el.clientWidth&&el.clientHeight) NMAP.setSize(new naver.maps.Size(el.clientWidth, el.clientHeight)); }
+window.addEventListener("resize", ()=>{ clearTimeout(window.__rz); window.__rz=setTimeout(fitMapSize,120); });
 function loadNaver(){
   return new Promise((res,rej)=>{
     if(!NAVER_MAP_CLIENT_ID) return rej(new Error("no id"));
@@ -728,7 +730,7 @@ document.addEventListener("click", async e=>{
   if(b=c("[data-mini]")){ const k=b.dataset.mini; S.minis.has(k)?S.minis.delete(k):S.minis.add(k); render(); return; }
   if(b=c("[data-cat]")){ S.cat=b.dataset.cat; render(); return; }
   if(b=c("[data-stamper]")){ S.stamper=b.dataset.stamper; render(); return; }
-  if(c("#mapFab")){ S.mapOpen=!S.mapOpen; $("#mapside").classList.toggle("open",S.mapOpen); $("#mapFab").textContent=S.mapOpen?"목록":"지도"; if(NMAP) setTimeout(()=>{ naver.maps.Event.trigger(NMAP,"resize"); nFit=""; render(); },50); return; }
+  if(c("#mapFab")){ S.mapOpen=!S.mapOpen; $("#mapside").classList.toggle("open",S.mapOpen); $("#mapFab").textContent=S.mapOpen?"목록":"지도"; if(NMAP) setTimeout(()=>{ fitMapSize(); nFit=""; render(); },50); return; }
   if(c("[data-add]")){ openAdd(); return; }
   if(b=c(".card[data-p], .pin[data-p]")){ openPlace(b.dataset.p); return; }
   if(t===$("#scrim")||c(".close")||c("[data-closeadd]")){ ADD=null; closeSheet(); return; }
@@ -751,7 +753,7 @@ document.addEventListener("click", async e=>{
   if(c("[data-geocode]")){ keepAddInputs(); const q=(ADD.scope==="ydp"?"서울 영등포구 ":"")+ADD.addr; if(!ADD.addr.trim()){ toast("주소를 먼저 넣어 주세요"); return; }
     const r=await geocode(q); if(r){ ADD.lat=r.lat; ADD.lng=r.lng; if(r.addr) ADD.addr=r.addr.replace(/^서울특별시 영등포구 /,""); renderAdd(); toast("위치를 찾았어요"); } else toast("주소로 위치를 못 찾았어요. 지도에서 직접 찍어 주세요."); return; }
   if(c("[data-pick]")){ keepAddInputs(); const saved=$("#scrim").innerHTML; $("#scrim").hidden=true; document.body.style.overflow="";
-    if(window.innerWidth<980){ S.mapOpen=true; $("#mapside").classList.add("open"); }
+    if(window.innerWidth<980){ S.mapOpen=true; $("#mapside").classList.add("open"); setTimeout(fitMapSize,50); }
     const n=$("#mapnote"); n.hidden=false; n.textContent="가게 위치를 지도에서 눌러 주세요";
     pickMode=true; pickCb=(lat,lng)=>{ ADD.lat=lat; ADD.lng=lng; n.hidden=true; if(window.innerWidth<980){ S.mapOpen=false; $("#mapside").classList.remove("open"); } renderAdd(); toast("위치를 찍었어요"); }; return; }
   if(c("[data-login]")){ if(window.__login) window.__login(); return; }
@@ -816,6 +818,7 @@ loadNaver().then(()=>{
   $("#map").innerHTML=""; $("#mapnote").hidden=true;
   const t=mapTarget();
   NMAP=new naver.maps.Map("map",{center:new naver.maps.LatLng(t.c[0],t.c[1]),zoom:t.z,zoomControl:true,zoomControlOptions:{position:naver.maps.Position.TOP_RIGHT}});
+  fitMapSize(); setTimeout(fitMapSize,300);
   naver.maps.Event.addListener(NMAP,"click",ev=>{ if(pickMode&&pickCb){ pickMode=false; const f=pickCb; pickCb=null; f(ev.coord.y,ev.coord.x); } });
   nKey=""; nFit=""; render();
 }).catch(()=>{});
